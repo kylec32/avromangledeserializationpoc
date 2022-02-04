@@ -10,7 +10,6 @@ import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.apache.avro.specific.SpecificRecordBase;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,15 +17,15 @@ import java.util.Arrays;
 
 public class MangledDeserializationIssue {
     public static void main(String[] args) {
-        ExampleRecord example = new ExampleRecord().newBuilder()
-                                                    .setId("example_id")
-                                                    .build();
+        ExampleRecord example = ExampleRecord.newBuilder()
+                                            .setId("example_id")
+                                            .build();
         var seralized = serialize(example);
 
-        System.out.println(deserialize(ExampleRecord.class, seralized));
+        System.out.println(deserialize(seralized));
     }
 
-    public static <T extends SpecificRecordBase> byte[] serialize(T data) {
+    public static byte[] serialize(ExampleRecord data) {
         try {
             byte[] result = null;
 
@@ -34,7 +33,7 @@ public class MangledDeserializationIssue {
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 Encoder encoder = EncoderFactory.get().binaryEncoder(byteArrayOutputStream, null);
 
-                DatumWriter<T> datumWriter = new SpecificDatumWriter<>(data.getSchema());
+                DatumWriter<ExampleRecord> datumWriter = new SpecificDatumWriter<>(data.getSchema());
                 datumWriter.write(data, encoder);
 
                 encoder.flush();
@@ -48,20 +47,19 @@ public class MangledDeserializationIssue {
         }
     }
 
-    public static <T extends SpecificRecordBase> T deserialize(Class<? extends T> clazz, byte[] data) {
+    public static ExampleRecord deserialize(byte[] data) {
         try {
-            T result = null;
+            ExampleRecord result = null;
             if (data != null) {
-                Schema schema = clazz.newInstance().getSchema();
-                DatumReader<T> datumReader =
+                Schema schema = ExampleRecord.SCHEMA$;
+                DatumReader<ExampleRecord> datumReader =
                         new SpecificDatumReader<>(schema);
                 Decoder decoder = DecoderFactory.get().binaryDecoder(data, null);
 
-                Object blah = datumReader.read(null, decoder);
-                result = (T)blah;
+                return datumReader.read(null, decoder);
             }
             return result;
-        } catch (InstantiationException | IllegalAccessException | IOException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Can't deserialize data '" + Arrays.toString(data) + "'", e);
         }
     }
